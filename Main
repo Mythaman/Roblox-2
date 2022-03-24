@@ -1,0 +1,107 @@
+local DiscordLib = loadstring(game:HttpGet"https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt")()
+
+local win = DiscordLib:Window("Universal Aimbot")
+
+local UIS = game:GetService("UserInputService")
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local camera = workspace.CurrentCamera
+local Mouse = Player:GetMouse()
+local AimbotEnabled = false
+local PredictionEnabled = false
+local FOV = 150
+
+Target = nil
+MousePos = nil	
+ScreenPos = nil
+
+local Server = win:Server("Main", "http://www.roblox.com/asset/?id=6031075938")
+
+local Main = Server:Channel("Main")
+
+Main:Toggle("Enable Aimbot",false, function(bool)
+	if bool == true then
+		AimbotEnabled = true
+	else
+		AimbotEnabled = false
+	end
+end)
+
+Main:Slider("FOV", 0, 1000, 150, function(t)
+	FOV = t
+end)
+
+Main:Toggle("Enable Prediction",false, function(bool)
+	if bool == true then
+		PredictionEnabled = true
+	else
+		PredictionEnabled = false
+	end
+end)
+
+Main:Slider("Prediction Multiplier", 0, 10000, 0, function(t)
+	Prediction = t
+end)
+
+Mouse.Button2Down:Connect(function()
+
+	if AimbotEnabled == true then
+
+		local Closest = {}
+
+		for i,v in pairs(workspace:GetChildren()) do
+			if v:FindFirstChild("HumanoidRootPart") then
+
+				local HumanoidRootPart = v.HumanoidRootPart
+
+				local Vector,onScreen = camera:WorldToScreenPoint(HumanoidRootPart.Position)
+
+				if onScreen then
+
+					MousePos = Vector2.new(Mouse.X,Mouse.Y)
+					ScreenPos = Vector2.new(Vector.X, Vector.Y)
+
+					if (MousePos - ScreenPos).Magnitude < FOV then
+						Closest[HumanoidRootPart] = (MousePos - ScreenPos).Magnitude
+					end
+				end
+			end
+		end
+
+		local smallestValue, smallestKey = math.huge, math.huge -- The largest number Lua can represent, just makes the loop check code easier to write
+
+		for key, value in pairs(Closest) do
+			if value < smallestValue then
+				smallestKey, smallestValue = key, value
+			end
+		end
+
+		if smallestKey then
+
+			print(smallestKey)
+
+			Target = smallestKey
+		end
+	end
+end)
+
+spawn(function()
+	game:GetService("RunService").RenderStepped:Connect(function()
+		if Target ~= nil then
+
+			local Distance = (Target.Position - game.Workspace.CurrentCamera.CFrame.Position).Magnitude/tonumber(Prediction)
+
+			local Lead = Target.Velocity
+
+			if PredictionEnabled == true then
+				game.Workspace.CurrentCamera.CFrame = CFrame.lookAt(game.Workspace.CurrentCamera.CFrame.Position,Target.Position + (Lead * Distance))
+			else
+				game.Workspace.CurrentCamera.CFrame = CFrame.lookAt(game.Workspace.CurrentCamera.CFrame.Position,Target.Position)
+			end
+		end
+	end)
+end)
+
+Mouse.Button2Up:Connect(function()
+	Target = nil
+end)
